@@ -1,6 +1,5 @@
 // system include
 #include "F28x_Project.h"
-#include "F2837xD_Ipc_drivers.h"
 
 #ifdef CPU1
 // cpu1 setup
@@ -13,18 +12,6 @@ void setup_cpu1(void){
 
 	// Initialize System Control:
 	InitSysCtrl();
-
-#ifdef _STANDALONE
-#ifdef _FLASH
-
-	// send boot command to allow the CPU2 application to begin execution
-	IPCBootCPU2(C1C2_BROM_BOOTMODE_BOOT_FROM_FLASH);
-#else
-
-	// send boot command to allow the CPU2 application to begin execution
-	IPCBootCPU2(C1C2_BROM_BOOTMODE_BOOT_FROM_RAM);
-#endif
-#endif
 
 	// call Flash Initialization to setup flash waitstates
 	#ifdef _FLASH
