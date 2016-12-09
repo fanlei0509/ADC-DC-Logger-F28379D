@@ -5,18 +5,8 @@
 // cpu1 setup
 void setup_cpu1(void){
 
-    // If running from flash copy RAM only functions to RAM
-#ifdef _FLASH
-    memcpy(&RamfuncsRunStart, &RamfuncsLoadStart, (size_t)&RamfuncsLoadSize);
-#endif
-
 	// Initialize System Control:
 	InitSysCtrl();
-
-	// call Flash Initialization to setup flash waitstates
-	#ifdef _FLASH
-	   InitFlash();
-	#endif
 
 	// Initialize GPIO:
 	InitGpio();
@@ -40,18 +30,8 @@ void setup_cpu1(void){
 // cpu2 setup
 void setup_cpu2(void){
 
-    // If running from flash copy RAM only functions to RAM
-#ifdef _FLASH
-    memcpy(&RamfuncsRunStart, &RamfuncsLoadStart, (size_t)&RamfuncsLoadSize);
-#endif
-
 	// Initialize System Control:
 	InitSysCtrl();
-
-	// call Flash Initialization to setup flash waitstates
-#ifdef _FLASH
-    InitFlash();
-#endif
 
 	// Clear all interrupts and initialize PIE vector table
 	DINT;
