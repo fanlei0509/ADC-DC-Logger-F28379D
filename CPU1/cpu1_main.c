@@ -4,8 +4,8 @@
 // local include
 #include "setup.h"
 
-// defines
-
+// function declarations
+__interrupt void cpu_timer0_isr(void);
 
 // main execution code
 void main(void) {
@@ -21,20 +21,46 @@ void main(void) {
     GPIO_SetupPinMux(BLINKY_LED_2, GPIO_MUX_CPU2, 0);
     EDIS;
 
+    // configure CPU-Timer 0 interrupt every microsecond:
+    GPIO_SetupPinMux(TIMER_GPIO, GPIO_MUX_CPU1, 0);
+    GPIO_SetupPinOptions(TIMER_GPIO, GPIO_OUTPUT, GPIO_PUSHPULL);
+    EALLOW;
+    PieVectTable.TIMER0_INT = &cpu_timer0_isr;
+    EDIS;
+    InitCpuTimers();   // For this example, only initialize the Cpu Timers
+    ConfigCpuTimer(&CpuTimer0, 200, 1);
+    CpuTimer0Regs.TCR.all = 0x4000;
+    IER |= M_INT1;
+    PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
+
+    EINT;  // Enable Global interrupt INTM
+    ERTM;  // Enable Global realtime interrupt DBGM
+
+    //data
+    Uint16 resultsIndex = 0;
+    Uint16 TimeResults[RESULTS_BUFFER_SIZE];
+
 	// main loop
 	for(;;){
 
-        // turn on blinky
-        GPIO_WritePin(BLINKY_LED_1, 0);
+    	// reset index if end has been reached
+    	if(resultsIndex == RESULTS_BUFFER_SIZE)
+    		resultsIndex = 0;
 
-        // delay
-        DELAY_US(1000*500);
-
-        // turn off blinky
-        GPIO_WritePin(BLINKY_LED_1, 1);
-
-        // delay
-        DELAY_US(1000*500);
+        TimeResults[resultsIndex] = CpuTimer0.InterruptCount;
+        //DELAY_US(100);
+        //AdcaResults[resultsIndex] = sampleADCA();
+        //AdcbResults[resultsIndex] = sampleADCB();
+    	resultsIndex++;
 
 	}
+}
+
+// timer 0 clock
+__interrupt void cpu_timer0_isr(void)
+{
+   CpuTimer0.InterruptCount++;
+
+   // acknowledge this interrupt to receive more interrupts from group 1
+   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }

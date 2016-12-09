@@ -34,10 +34,6 @@ void setup_cpu1(void){
 	// Initialize the PIE vector table with pointers to the shell Interrupt Service Routines (ISR).
 	InitPieVectTable();
 
-	// Enable global Interrupts and higher priority real-time debug events:
-	EINT;  // Enable Global interrupt INTM
-	ERTM;  // Enable Global realtime interrupt DBGM
-
 }
 #endif
 
