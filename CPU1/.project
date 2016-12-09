@@ -26,6 +26,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>F2837xD_Adc.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/F2837xD_common/source/F2837xD_Adc.c</locationURI>
+		</link>
+		<link>
 			<name>F2837xD_CodeStartBranch.asm</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/F2837xD_common/source/F2837xD_CodeStartBranch.asm</locationURI>
