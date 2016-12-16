@@ -31,7 +31,7 @@ PAGE 0 :  /* Program Memory */
    FLASHK           : origin = 0x0B8000, length = 0x002000	/* on-chip Flash */
    FLASHL           : origin = 0x0BA000, length = 0x002000	/* on-chip Flash */
    FLASHM           : origin = 0x0BC000, length = 0x002000	/* on-chip Flash */
-   FLASHN           : origin = 0x0BE000, length = 0x002000	/* on-chip Flash */
+   FLASHN           : origin = 0x0BE000, length = 0x002000	/* on-chip Flash */   
 
 PAGE 1 : /* Data Memory */
          /* Memory (RAM/FLASH) blocks can be moved to PAGE0 for program allocation */
@@ -52,12 +52,10 @@ PAGE 1 : /* Data Memory */
    RAMGS7      : origin = 0x013000, length = 0x001000
    RAMGS8      : origin = 0x014000, length = 0x001000
    RAMGS9      : origin = 0x015000, length = 0x001000
-   RAMGS10     : origin = 0x016000, length = 0x004000
-   //RAMGS11     : origin = 0x017000, length = 0x001000
-   //RAMGS12     : origin = 0x018000, length = 0x001000
-   //RAMGS13     : origin = 0x019000, length = 0x001000
-
-
+   RAMGS10     : origin = 0x016000, length = 0x001000
+   RAMGS11     : origin = 0x017000, length = 0x001000
+   RAMGS12     : origin = 0x018000, length = 0x001000
+   RAMGS13     : origin = 0x019000, length = 0x001000
 
    
    CPU2TOCPU1RAM   : origin = 0x03F800, length = 0x000400
@@ -70,7 +68,7 @@ SECTIONS
    /* Allocate program areas: */
    .cinit              : > FLASHB      PAGE = 0, ALIGN(4)
    .pinit              : > FLASHB,     PAGE = 0, ALIGN(4)
-   .text               : >> FLASHB | FLASHC | FLASHD | FLASHE | FLASHI | FLASHJ | FLASHK | FLASHL | FLASHM | FLASHN       PAGE = 0, ALIGN(4)
+   .text               : >> FLASHB | FLASHC | FLASHD | FLASHE      PAGE = 0, ALIGN(4)
    codestart           : > BEGIN       PAGE = 0, ALIGN(4)
 
 #ifdef __TI_COMPILER_VERSION__
@@ -99,7 +97,7 @@ SECTIONS
 						 
    /* Allocate uninitalized data sections: */
    .stack              : > RAMM1        PAGE = 1
-   .ebss               : >> RAMLS5 | RAMGS0 | RAMGS1 | RAMGS2 | RAMGS3 | RAMGS4 | RAMGS5 | RAMGS10        PAGE = 1
+   .ebss               : >> RAMLS5 | RAMGS0 | RAMGS1       PAGE = 1
    .esysmem            : > RAMLS5       PAGE = 1
 
    /* Initalized sections go in Flash */

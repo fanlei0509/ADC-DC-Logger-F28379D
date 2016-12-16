@@ -19,7 +19,6 @@ extern Uint16 RamfuncsRunStart;
 #define BLINKY_LED_1        31
 #define BLINKY_LED_2        34
 #define TIMER_GPIO          65
-#define RESULTS_BUFFER_SIZE 8
 
 //setup cpu1
 void setup_cpu1(void);
