@@ -36,10 +36,15 @@
 /*-------------------------------------------------------------------------*/
 
 //#include <avr/io.h>			/* Include device specific declareation file here */
-
+inline Uint16 read124(void)
+{
+	return (GpioDataRegs.GPDDAT.bit.GPIO124) & 0x01;
+}
 
 #define DO_INIT()	{EALLOW; GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0; GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0; GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0; EDIS;}				/* Initialize port for MMC DO as input */
-#define DO			(GPIO_ReadPin(124) &	0x01)	/* Test for MMC DO ('H':true, 'L':false) */
+//#define DO			(GPIO_ReadPin(124) &	0x01)	/* Test for MMC DO ('H':true, 'L':false) */
+#define DO          (read124() &	0x01)
+//#define DO          ((GpioDataRegs.GPDDAT.bit.GPIO124) & 0x01 & 0x01)
 
 #define DI_INIT()	{EALLOW; GpioCtrlRegs.GPDPUD.bit.GPIO122 = 0; GpioDataRegs.GPDSET.bit.GPIO122 = 1; GpioCtrlRegs.GPDMUX2.bit.GPIO122 = 0; GpioCtrlRegs.GPDDIR.bit.GPIO122 = 1; EDIS;}
 #define	DI_H()		GpioDataRegs.GPDSET.bit.GPIO122 = 1 //GpioDataRegs.GPDSET.bit.GPIO122 = 1	/* Set MMC CS "high" */
