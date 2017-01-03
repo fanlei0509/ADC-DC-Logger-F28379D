@@ -1,34 +1,83 @@
 // system include
 #include "F28x_Project.h"
-#include "ff.h"
-#include "diskio.h"
+#include "F2837xD_Ipc_drivers.h"
 
 // local include
 #include "setup.h"
 
+volatile Uint16 c1_test_running;
+volatile Uint16 c1_buf_1_write_count;
+volatile Uint16 c1_buf_1_output_count;
+Uint16 c1_results_buf_1[NUM_VALUES];
+Uint16 c1_results_buf_2[NUM_VALUES];
+volatile Uint16 c1_buf_2_write_count;
+volatile Uint16 c1_buf_2_output_count;
+
+#pragma DATA_SECTION(c1_test_running,"SHARERAMGS1");
+#pragma DATA_SECTION(c1_buf_1_write_count,"SHARERAMGS2");
+#pragma DATA_SECTION(c1_buf_2_write_count,"SHARERAMGS3");
+
+#pragma DATA_SECTION(c1_results_buf_1,"SHARERAMGS4");
+#pragma DATA_SECTION(c1_results_buf_2,"SHARERAMGS5");
+
+#pragma DATA_SECTION(c1_buf_1_output_count,"SHARERAMGS14");
+#pragma DATA_SECTION(c1_buf_2_output_count,"SHARERAMGS15");
+
 // function declarations
 __interrupt void cpu_timer0_isr(void);
-inline int16_t sampleADCA(void);
-inline int16_t sampleADCB(void);
+void capture_data(void);
+inline void sampleADCA(Uint16 *loc);
+inline void sampleADCB(Uint16 *loc);
 void setup_blinkys(void);
 void setup_timer(void);
 void setup_ADCs(void);
+void setup_fatfs(void);
 void twiddle_blinkys(void);
 
-// variables
-FATFS FatFs;		/* FatFs work area needed for each volume */
-FIL Fil;			/* File object needed for each open file */
-#define RESULTS_BUFFER_SIZE 512
-#define NUM_VALUES 8192  // size*3
-#define BUFF_SIZE  16384 // size*3*2
-Uint16 results[NUM_VALUES];
-BYTE* data_pointer = (BYTE *)results;
+Uint16* array_pointer;
+Uint16 resultsIndex = 0;
 
 // main execution code
 void main(void) {
 
-	// initialize setup
-	setup_cpu1();
+	// Initialize System Control:
+	InitSysCtrl();
+
+#ifdef _STANDALONE
+#ifdef _FLASH
+    //  Send boot command to allow the CPU02 application to begin execution
+    IPCBootCPU2(C1C2_BROM_BOOTMODE_BOOT_FROM_FLASH);
+#else
+    //  Send boot command to allow the CPU02 application to begin execution
+    IPCBootCPU2(C1C2_BROM_BOOTMODE_BOOT_FROM_RAM);
+#endif
+#endif
+
+	// Initialize GPIO:
+	InitGpio();
+
+	// Clear all interrupts and initialize PIE vector table
+	DINT;
+
+	// Initialize the PIE control registers to their default state.
+	InitPieCtrl();
+
+	// Disable CPU interrupts and clear all CPU interrupt flags:
+	IER = 0x0000;
+	IFR = 0x0000;
+
+	// Initialize the PIE vector table with pointers to the shell Interrupt Service Routines (ISR).
+	InitPieVectTable();
+
+	// share ram
+    while( !(MemCfgRegs.GSxMSEL.bit.MSEL_GS15 &
+             MemCfgRegs.GSxMSEL.bit.MSEL_GS14))
+    {
+        EALLOW;
+        MemCfgRegs.GSxMSEL.bit.MSEL_GS15 = 1;
+        MemCfgRegs.GSxMSEL.bit.MSEL_GS14 = 1;
+        EDIS;
+    }
 
 	// setup blinky 1 and 2
 	setup_blinkys();
@@ -39,58 +88,27 @@ void main(void) {
     // setup ADCs
 	setup_ADCs();
 
+	// setup fatfs to write from cpu2
+	setup_fatfs();
+
 	// enable interrupts
     EINT;
     ERTM;
 
-    //data
-    Uint16 resultsIndex = 0;
+	// TODO need to setup serial port to start running test
+    c1_test_running = TRUE;
 
-    // setup data file
-    f_mount(&FatFs, "", 0);		/* Give a work area to the default drive */
-    if(f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
-    	twiddle_blinkys();
+	// loop forever
+	while(1){
 
-    f_expand(&Fil, 6553600, 1);
-
-    UINT bw;
-
-    BYTE drv = Fil.obj.fs->drv;
-    DWORD sect = Fil.obj.fs->database + Fil.obj.fs->csize * (Fil.obj.sclust - 2);
-
-    /* Write 2048 sectors from top of the file at a time */
-
-
-	// main loop
-    Uint32 i;
-    Uint32 start_time = CpuTimer0.InterruptCount;
-	for(i = 0; i < 100; ++i){
-		//f_write(&Fil, results, BUFF_SIZE, &bw);	/* Write data to the file */
-	    disk_write(drv, data_pointer, sect, 32);
-	    sect += 32;
-	}
-#if 0
-	for(i = 0; i < RESULTS_BUFFER_SIZE*10; ++i){
-
-    	results[resultsIndex] = CpuTimer0.InterruptCount16;
-    	results[resultsIndex+1] = sampleADCA();
-    	results[resultsIndex+2] = sampleADCB();
-
-    	resultsIndex = resultsIndex + 3;
-
-    	// reset index if end has been reached
-    	if(resultsIndex == NUM_VALUES){
-    		resultsIndex = 0;
-    		f_write(&Fil, results, BUFF_SIZE, &bw);	/* Write data to the file */
-    	}
+		// check if test should be run
+		if(c1_test_running == TRUE){
+		    c1_buf_1_write_count = 0;
+		    c1_buf_2_write_count = 0;
+			capture_data();
+		}
 
 	}
-#endif
-	Uint32 stop_time = CpuTimer0.InterruptCount;
-	Uint32 dt = stop_time - start_time;
-	DWORD sect2 = Fil.obj.fs->database + Fil.obj.fs->csize * (Fil.obj.sclust - 2);
-	f_close(&Fil);
-
 
 }
 
@@ -105,11 +123,63 @@ __interrupt void cpu_timer0_isr(void)
 	PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
-// sample ADC-A
-int16_t sampleADCA(void)
+// capture data
+void capture_data(void)
 {
-	int16_t sample;
+    //data
+    Uint16 i,j;
+    Uint16 array_pt_1 = TRUE;
+    array_pointer = c1_results_buf_1;
 
+    // read NUM_WRITES*NUM_SAMPLES of data
+	for(j = 0; j < NUM_WRITES; ++j){
+
+		// make sure that buffer has been output to data file before writing to
+		if(array_pt_1 == TRUE)
+			while(c1_buf_1_write_count != c1_buf_1_output_count){}
+		else
+			while(c1_buf_2_write_count != c1_buf_2_output_count){}
+
+		// populate specified buffer
+		for(i = 0; i < NUM_SAMPLES; ++i){
+			// TODO hopefully can make this 0
+			DELAY_US(8);
+
+			array_pointer[resultsIndex] = CpuTimer0.InterruptCount16;
+			//array_pointer[resultsIndex+1] = sampleADCA();
+			//array_pointer[resultsIndex+2] = sampleADCB();
+			sampleADCA(&array_pointer[resultsIndex+1]);
+			sampleADCB(&array_pointer[resultsIndex+2]);
+			resultsIndex = resultsIndex + 3;
+		}
+
+		// reset index and flip to other buffer
+		resultsIndex = 0;
+		if(array_pt_1 == TRUE){
+			array_pt_1 = FALSE;
+			array_pointer = c1_results_buf_2;
+			c1_buf_1_write_count++;
+		}
+		else{
+			array_pt_1 = TRUE;
+			array_pointer = c1_results_buf_1;
+			c1_buf_2_write_count++;
+		}
+
+		// TODO check for serial communication to end test
+		//if(j==100)
+			//break;
+	}
+
+	// reached maximum length
+	c1_test_running = FALSE;
+
+	return;
+}
+
+// sample ADC-A
+void sampleADCA(Uint16 *loc)
+{
     //Force start of conversion on SOC0
     AdcaRegs.ADCSOCFRC1.all = 0x03;
 
@@ -118,17 +188,15 @@ int16_t sampleADCA(void)
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;        //Clear ADCINT1
 
     //Get ADC sample result from SOC0
-    sample = AdcaResultRegs.ADCRESULT1;
+    (*loc) = AdcaResultRegs.ADCRESULT1;
 
-    return(sample);
+    return;
 
 }
 
 // sample ADC-B
-int16_t sampleADCB(void)
+void sampleADCB(Uint16 *loc)
 {
-	int16_t sample;
-
     //Force start of conversion on SOC0
     AdcbRegs.ADCSOCFRC1.all = 0x03;
 
@@ -137,9 +205,9 @@ int16_t sampleADCB(void)
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;        //Clear ADCINT1
 
     //Get ADC sample result from SOC0
-    sample = AdcbResultRegs.ADCRESULT1;
+    (*loc) = AdcbResultRegs.ADCRESULT1;
 
-    return(sample);
+    return;
 
 }
 
@@ -210,6 +278,45 @@ void setup_ADCs(void)
 	AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = 1; //end of SOC1 will set INT1 flag
 	AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1;   //enable INT1 flag
 	AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
+
+	return;
+}
+
+// setup fatfs
+void setup_fatfs(void)
+{
+	EALLOW;
+#if 0
+	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0;
+	GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
+#endif
+
+	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO124 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO124 = 1;
+	GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
+
+	GpioCtrlRegs.GPDPUD.bit.GPIO122 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO122 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO122 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO122 = 1;
+	GPIO_SetupPinMux(122, GPIO_MUX_CPU2, 0);
+
+	GpioCtrlRegs.GPDPUD.bit.GPIO123 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO123 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO123 = 1;
+	GPIO_SetupPinMux(123, GPIO_MUX_CPU2, 0);
+
+	GpioCtrlRegs.GPDPUD.bit.GPIO125 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO125 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO125 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO125 = 1;
+	GPIO_SetupPinMux(125, GPIO_MUX_CPU2, 0);
+	EDIS;
 
 	return;
 }

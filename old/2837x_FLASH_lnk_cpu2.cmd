@@ -47,19 +47,19 @@ PAGE 1 : /* Data Memory */
    RAMGS2      : origin = 0x00E000, length = 0x001000
    RAMGS3      : origin = 0x00F000, length = 0x001000
    RAMGS4      : origin = 0x010000, length = 0x001000
-   RAMGS5      : origin = 0x011000, length = 0x001000
-   RAMGS6      : origin = 0x012000, length = 0x001000
-   RAMGS7      : origin = 0x013000, length = 0x001000
-   RAMGS8      : origin = 0x014000, length = 0x001000
-   RAMGS9      : origin = 0x015000, length = 0x001000
-   RAMGS10     : origin = 0x016000, length = 0x001000
-   RAMGS11     : origin = 0x017000, length = 0x001000
-   RAMGS12     : origin = 0x018000, length = 0x001000
-   RAMGS13     : origin = 0x019000, length = 0x001000
+   RAMGS5      : origin = 0x011000, length = 0x009000
+   //RAMGS6      : origin = 0x012000, length = 0x001000
+   //RAMGS7      : origin = 0x013000, length = 0x001000
+   //RAMGS8      : origin = 0x014000, length = 0x001000
+   //RAMGS9      : origin = 0x015000, length = 0x001000
+   //RAMGS10     : origin = 0x016000, length = 0x001000
+   //RAMGS11     : origin = 0x017000, length = 0x001000
+   //RAMGS12     : origin = 0x018000, length = 0x001000
+   //RAMGS13     : origin = 0x019000, length = 0x001000
 
    
-   CPU2TOCPU1RAM   : origin = 0x03F800, length = 0x000400
-   CPU1TOCPU2RAM   : origin = 0x03FC00, length = 0x000400
+   //CPU2TOCPU1RAM   : origin = 0x03F800, length = 0x000400
+   //CPU1TOCPU2RAM   : origin = 0x03FC00, length = 0x000400
 }
 
 
@@ -108,6 +108,8 @@ SECTIONS
 
    Filter_RegsFile     : > RAMGS0,	   PAGE = 1
    
+   SHARERAMGS5		   : > RAMGS5,		PAGE = 1
+#if 0
    SHARERAMGS0		: > RAMGS0,		PAGE = 1
    SHARERAMGS1		: > RAMGS1,		PAGE = 1
    
@@ -125,7 +127,7 @@ SECTIONS
         GETWRITEIDX :  TYPE = DSECT
         PUTREADIDX :   TYPE = DSECT
     }  
-    
+#endif
 }
 
 /*

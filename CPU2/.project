@@ -76,9 +76,14 @@
 			<locationURI>PARENT-1-PROJECT_LOC/F2837xD_common/source/F2837xD_usDelay.asm</locationURI>
 		</link>
 		<link>
-			<name>setup.c</name>
+			<name>ff.c</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/src/setup.c</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/fatfs/ff.c</locationURI>
+		</link>
+		<link>
+			<name>sdmm.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/fatfs/sdmm.c</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>
