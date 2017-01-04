@@ -58,6 +58,24 @@ inline Uint16 read124(void)
 #define	CS_H()		GpioDataRegs.GPDSET.bit.GPIO125 = 1	/* Set MMC CS "high" */
 #define CS_L()		GpioDataRegs.GPDCLEAR.bit.GPIO125 = 1 /* Set MMC CS "low" */
 
+#if 0
+#define DO_INIT()	{EALLOW; GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0; GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0; GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0; EDIS;}				/* Initialize port for MMC DO as input */
+//#define DO			(GPIO_ReadPin(124) &	0x01)	/* Test for MMC DO ('H':true, 'L':false) */
+#define DO          (read124() &	0x01)
+//#define DO          ((GpioDataRegs.GPDDAT.bit.GPIO124) & 0x01 & 0x01)
+
+#define DI_INIT()	{EALLOW; GpioCtrlRegs.GPDPUD.bit.GPIO122 = 0; GpioDataRegs.GPDSET.bit.GPIO122 = 1; GpioCtrlRegs.GPDMUX2.bit.GPIO122 = 0; GpioCtrlRegs.GPDDIR.bit.GPIO122 = 1; EDIS;}
+#define	DI_H()		GpioDataRegs.GPDSET.bit.GPIO122 = 1 //GpioDataRegs.GPDSET.bit.GPIO122 = 1	/* Set MMC CS "high" */
+#define DI_L()		GpioDataRegs.GPDCLEAR.bit.GPIO122 = 1 //GpioDataRegs.GPDSET.bit.GPIO122 = 0	/* Set MMC CS "low" */
+
+#define CK_INIT()	{EALLOW; GpioCtrlRegs.GPDPUD.bit.GPIO123 = 0; GpioDataRegs.GPDSET.bit.GPIO123 = 1; GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0; GpioCtrlRegs.GPDDIR.bit.GPIO123 = 1; EDIS;}
+#define	CK_H()		GpioDataRegs.GPDSET.bit.GPIO123 = 1 //GpioDataRegs.GPDSET.bit.GPIO123 = 1	/* Set MMC CS "high" */
+#define CK_L()		GpioDataRegs.GPDCLEAR.bit.GPIO123 = 1 //GpioDataRegs.GPDSET.bit.GPIO123 = 0	/* Set MMC CS "low" */
+
+#define CS_INIT()	{EALLOW; GpioCtrlRegs.GPDPUD.bit.GPIO125 = 0; GpioDataRegs.GPDSET.bit.GPIO125 = 1; GpioCtrlRegs.GPDMUX2.bit.GPIO125 = 0; GpioCtrlRegs.GPDDIR.bit.GPIO125 = 1; EDIS;}
+#define	CS_H()		GpioDataRegs.GPDSET.bit.GPIO125 = 1	/* Set MMC CS "high" */
+#define CS_L()		GpioDataRegs.GPDCLEAR.bit.GPIO125 = 1 /* Set MMC CS "low" */
+#endif
 
 static
 void dly_us (UINT n)	/* Delay n microseconds (avr-gcc -Os) */

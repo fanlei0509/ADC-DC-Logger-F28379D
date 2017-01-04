@@ -1,15 +1,18 @@
 // system include
 #include "F28x_Project.h"
 #include "F2837xD_Ipc_drivers.h"
-
+#include "ff.h"
+#include "diskio.h"
+FATFS FatFs;		/* FatFs work area needed for each volume */
+FIL Fil;			/* File object needed for each open file */
 // local include
 #include "setup.h"
 
 volatile Uint16 c1_test_running;
 volatile Uint16 c1_buf_1_write_count;
 volatile Uint16 c1_buf_1_output_count;
-Uint16 c1_results_buf_1[NUM_VALUES];
-Uint16 c1_results_buf_2[NUM_VALUES];
+BYTE c1_results_buf_1[BUFF_SIZE];
+BYTE c1_results_buf_2[BUFF_SIZE];
 volatile Uint16 c1_buf_2_write_count;
 volatile Uint16 c1_buf_2_output_count;
 
@@ -26,15 +29,15 @@ volatile Uint16 c1_buf_2_output_count;
 // function declarations
 __interrupt void cpu_timer0_isr(void);
 void capture_data(void);
-inline void sampleADCA(Uint16 *loc);
-inline void sampleADCB(Uint16 *loc);
+inline void sampleADCA(BYTE *loc1, BYTE *loc2);
+inline void sampleADCB(BYTE *loc1, BYTE *loc2);
 void setup_blinkys(void);
 void setup_timer(void);
 void setup_ADCs(void);
 void setup_fatfs(void);
 void twiddle_blinkys(void);
 
-Uint16* array_pointer;
+BYTE* array_pointer;
 Uint16 resultsIndex = 0;
 
 // main execution code
@@ -42,6 +45,10 @@ void main(void) {
 
 	// Initialize System Control:
 	InitSysCtrl();
+
+#ifdef _FLASH
+	InitFlash();
+#endif
 
 #ifdef _STANDALONE
 #ifdef _FLASH
@@ -145,12 +152,13 @@ void capture_data(void)
 			// TODO hopefully can make this 0
 			DELAY_US(8);
 
-			array_pointer[resultsIndex] = CpuTimer0.InterruptCount16;
+			array_pointer[resultsIndex] = (BYTE)(CpuTimer0.InterruptCount16 >> 8);
+			array_pointer[resultsIndex+1] = (BYTE)CpuTimer0.InterruptCount16;
 			//array_pointer[resultsIndex+1] = sampleADCA();
 			//array_pointer[resultsIndex+2] = sampleADCB();
-			sampleADCA(&array_pointer[resultsIndex+1]);
-			sampleADCB(&array_pointer[resultsIndex+2]);
-			resultsIndex = resultsIndex + 3;
+			sampleADCA(&array_pointer[resultsIndex+2], &array_pointer[resultsIndex+3]);
+			sampleADCB(&array_pointer[resultsIndex+4], &array_pointer[resultsIndex+5]);
+			resultsIndex = resultsIndex + 6;
 		}
 
 		// reset index and flip to other buffer
@@ -178,7 +186,7 @@ void capture_data(void)
 }
 
 // sample ADC-A
-void sampleADCA(Uint16 *loc)
+void sampleADCA(BYTE *loc1, BYTE *loc2)
 {
     //Force start of conversion on SOC0
     AdcaRegs.ADCSOCFRC1.all = 0x03;
@@ -188,14 +196,15 @@ void sampleADCA(Uint16 *loc)
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;        //Clear ADCINT1
 
     //Get ADC sample result from SOC0
-    (*loc) = AdcaResultRegs.ADCRESULT1;
+    (*loc1) = (BYTE)(AdcaResultRegs.ADCRESULT1 >> 8);
+    (*loc2) = (BYTE)AdcaResultRegs.ADCRESULT1;
 
     return;
 
 }
 
 // sample ADC-B
-void sampleADCB(Uint16 *loc)
+void sampleADCB(BYTE *loc1, BYTE *loc2)
 {
     //Force start of conversion on SOC0
     AdcbRegs.ADCSOCFRC1.all = 0x03;
@@ -205,7 +214,8 @@ void sampleADCB(Uint16 *loc)
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;        //Clear ADCINT1
 
     //Get ADC sample result from SOC0
-    (*loc) = AdcbResultRegs.ADCRESULT1;
+    (*loc1) = (BYTE)(AdcbResultRegs.ADCRESULT1 >> 8);
+    (*loc2) = (BYTE)AdcbResultRegs.ADCRESULT1;
 
     return;
 
@@ -286,7 +296,30 @@ void setup_ADCs(void)
 void setup_fatfs(void)
 {
 	EALLOW;
+#if 0
+	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0;
+	//GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
 
+	GpioCtrlRegs.GPDPUD.bit.GPIO122 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO122 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO122 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO122 = 1;
+	//GPIO_SetupPinMux(122, GPIO_MUX_CPU2, 0);
+
+	GpioCtrlRegs.GPDPUD.bit.GPIO123 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO123 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO123 = 1;
+	//GPIO_SetupPinMux(123, GPIO_MUX_CPU2, 0);
+
+	GpioCtrlRegs.GPDPUD.bit.GPIO125 = 0;
+	GpioDataRegs.GPDSET.bit.GPIO125 = 1;
+	GpioCtrlRegs.GPDMUX2.bit.GPIO125 = 0;
+	GpioCtrlRegs.GPDDIR.bit.GPIO125 = 1;
+	//GPIO_SetupPinMux(125, GPIO_MUX_CPU2, 0);
+#endif
     GPIO_SetupPinOptions(124, GPIO_INPUT, GPIO_PUSHPULL);
     GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
 
@@ -298,38 +331,18 @@ void setup_fatfs(void)
 
     GPIO_SetupPinOptions(125, GPIO_OUTPUT, GPIO_PUSHPULL);
     GPIO_SetupPinMux(125, GPIO_MUX_CPU2, 0);
-#if 0
-	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
-	GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;
-	GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0;
-	GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
 
-	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
-	GpioDataRegs.GPDSET.bit.GPIO124 = 1;
-	GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;
-	GpioCtrlRegs.GPDDIR.bit.GPIO124 = 1;
-	GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
-
-	GpioCtrlRegs.GPDPUD.bit.GPIO122 = 0;
-	GpioDataRegs.GPDSET.bit.GPIO122 = 1;
-	GpioCtrlRegs.GPDMUX2.bit.GPIO122 = 0;
-	GpioCtrlRegs.GPDDIR.bit.GPIO122 = 1;
-	GPIO_SetupPinMux(122, GPIO_MUX_CPU2, 0);
-
-	GpioCtrlRegs.GPDPUD.bit.GPIO123 = 0;
-	GpioDataRegs.GPDSET.bit.GPIO123 = 1;
-	GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;
-	GpioCtrlRegs.GPDDIR.bit.GPIO123 = 1;
-	GPIO_SetupPinMux(123, GPIO_MUX_CPU2, 0);
-
-	GpioCtrlRegs.GPDPUD.bit.GPIO125 = 0;
-	GpioDataRegs.GPDSET.bit.GPIO125 = 1;
-	GpioCtrlRegs.GPDMUX2.bit.GPIO125 = 0;
-	GpioCtrlRegs.GPDDIR.bit.GPIO125 = 1;
-	GPIO_SetupPinMux(125, GPIO_MUX_CPU2, 0);
-#endif
 	EDIS;
-
+#if 0
+	FRESULT fresult;
+    // setup data file
+    fresult = f_mount(&FatFs, "", 0);		/* Give a work area to the default drive */
+    //if(f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+    	//twiddle_blinkys();
+    fresult = f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS);
+    fresult = f_expand(&Fil, MAX_FILE_SIZE, 1);
+	f_close(&Fil);
+#endif
 	return;
 }
 

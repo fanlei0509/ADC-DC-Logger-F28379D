@@ -9,8 +9,8 @@
 volatile Uint16 c2_test_running;
 volatile Uint16 c2_buf_1_write_count;
 volatile Uint16 c2_buf_1_output_count;
-Uint16 c2_results_buf_1[NUM_VALUES];
-Uint16 c2_results_buf_2[NUM_VALUES];
+BYTE c2_results_buf_1[BUFF_SIZE];
+BYTE c2_results_buf_2[BUFF_SIZE];
 volatile Uint16 c2_buf_2_write_count;
 volatile Uint16 c2_buf_2_output_count;
 
@@ -26,6 +26,7 @@ volatile Uint16 c2_buf_2_output_count;
 
 // functions
 void write_data(void);
+void transform_data(void);
 
 // variables
 FATFS FatFs;		/* FatFs work area needed for each volume */
@@ -35,8 +36,16 @@ BYTE* data_pointer; // = (BYTE *)results_buf_1;
 // main execution code
 void main(void) {
 
+#ifdef _FLASH
+	memcpy(&RamfuncsRunStart, &RamfuncsLoadStart, (size_t)&RamfuncsLoadSize);
+#endif
+
 	// Initialize System Control:
 	InitSysCtrl();
+
+#ifdef _FLASH
+	InitFlash();
+#endif
 
 	// Clear all interrupts and initialize PIE vector table
 	DINT;
@@ -58,7 +67,40 @@ void main(void) {
 	// Enable global Interrupts and higher priority real-time debug events:
 	EINT;  // Enable Global interrupt INTM
 	ERTM;  // Enable Global realtime interrupt DBGM
+#if 0
+	FRESULT fresult;
+    fresult = f_mount(&FatFs, "", 0);		/* Give a work area to the default drive */
+    //if(f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+    	//twiddle_blinkys();
+    fresult = f_open(&Fil, "data.txt", FA_WRITE | FA_CREATE_ALWAYS);
+    //fresult = f_expand(&Fil, MAX_FILE_SIZE, 1);
+	Uint16 time_data[2];
+	time_data[0] = 12345;
+	time_data[1] = 23456;
+	Uint16 single_var = 1354;
+	char test_write[4] = "test";
+	Uint16 dummy;
+	BYTE data[2];
+	data[0] = (BYTE)(single_var >> 8);
+	data[1] = (BYTE)single_var;
+	f_write(&Fil, data, 2, &dummy);
+	f_close(&Fil);
 
+	fresult = f_open(&Fil, "data.txt", FA_READ);
+	Uint16 time_data2[2];
+	Uint16 single_var2 = 0;
+	BYTE data_read[2];
+	char test_write2[4];
+
+	fresult = f_read(&Fil, data_read, 2, &dummy);
+	single_var2 = data_read[1] | (Uint16)data_read[0] << 8;
+	f_close(&Fil);
+
+	buf[1] = (BYTE)(arg >> 24);		/* Argument[31..24] */
+	buf[2] = (BYTE)(arg >> 16);		/* Argument[23..16] */
+	buf[3] = (BYTE)(arg >> 8);		/* Argument[15..8] */
+	buf[4] = (BYTE)arg;				/* Argument[7..0] */
+#endif
 	// loop forever until test is running
 	while(1){
 
@@ -86,7 +128,7 @@ void write_data(void)
     DWORD sect = Fil.obj.fs->database + Fil.obj.fs->csize * (Fil.obj.sclust - 2);
 
     Uint16 data_pt_1 = TRUE;
-	data_pointer = (BYTE *)c2_results_buf_1;
+	data_pointer = c2_results_buf_1;
 
 	// wait until data is ready to be saved to file
 	while(c2_buf_1_write_count == 0){}
@@ -113,12 +155,12 @@ void write_data(void)
 		// flip to other buffer
 		if(data_pt_1 == TRUE){
 			data_pt_1 = FALSE;
-			data_pointer = (BYTE *)c2_results_buf_2;
+			data_pointer = c2_results_buf_2;
 			c2_buf_1_output_count++;
 		}
 		else{
 			data_pt_1 = TRUE;
-			data_pointer = (BYTE *)c2_results_buf_1;
+			data_pointer = c2_results_buf_1;
 			c2_buf_2_output_count++;
 		}
 
@@ -126,5 +168,18 @@ void write_data(void)
 
 	f_close(&Fil);
 
+	transform_data();
+
 	return;
+}
+
+void transform_data(void)
+{
+	FRESULT fresult;
+	fresult = f_open(&Fil, "data.txt", FA_READ);
+	Uint16 time_data[2];
+	Uint16 dummy;
+
+	fresult = f_read(&Fil, time_data, 4, &dummy);
+	f_close(&Fil);
 }
