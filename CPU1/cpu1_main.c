@@ -286,12 +286,23 @@ void setup_ADCs(void)
 void setup_fatfs(void)
 {
 	EALLOW;
+
+    GPIO_SetupPinOptions(124, GPIO_INPUT, GPIO_PUSHPULL);
+    GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
+
+    GPIO_SetupPinOptions(122, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GPIO_SetupPinMux(122, GPIO_MUX_CPU2, 0);
+
+    GPIO_SetupPinOptions(123, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GPIO_SetupPinMux(123, GPIO_MUX_CPU2, 0);
+
+    GPIO_SetupPinOptions(125, GPIO_OUTPUT, GPIO_PUSHPULL);
+    GPIO_SetupPinMux(125, GPIO_MUX_CPU2, 0);
 #if 0
 	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
 	GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;
 	GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0;
 	GPIO_SetupPinMux(124, GPIO_MUX_CPU2, 0);
-#endif
 
 	GpioCtrlRegs.GPDPUD.bit.GPIO124 = 0;
 	GpioDataRegs.GPDSET.bit.GPIO124 = 1;
@@ -316,6 +327,7 @@ void setup_fatfs(void)
 	GpioCtrlRegs.GPDMUX2.bit.GPIO125 = 0;
 	GpioCtrlRegs.GPDDIR.bit.GPIO125 = 1;
 	GPIO_SetupPinMux(125, GPIO_MUX_CPU2, 0);
+#endif
 	EDIS;
 
 	return;
