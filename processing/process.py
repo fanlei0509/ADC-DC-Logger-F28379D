@@ -4,13 +4,21 @@ import array
 
 if __name__=="__main__":
 
-    with open("DATA.BIN", "rb") as f:
-        #data = f.read(36864)
+    filename = "DATA.BIN"
+    outfile = "data.csv"
+    file_size = 204800000
+    read_chunk = 4
+    data_format = '>HH'
+    num_sections = file_size/read_chunk
 
-        data = f.read(2)
-        print(unpack('>H',data))
-        #print(int.from_bytes(b'\x00\x0c'), byteorder='big')
-        #print(int.from_bytes(b'y\xcc\xa6', byteorder='big'))
-        #print(np.uint16(data[0:2]))
+    with open(filename, "rb") as f:
+        with open(outfile,"w") as outfile:
+            outfile.write('Channel 1 (0-4095 mV), Channel 2 (0-4095 mV)\n')
+            for i in range(0,num_sections):
+                data = f.read(read_chunk)
+                
+                values = unpack(data_format,data[0:read_chunk])
+                outfile.write('{0:d},{1:d}\n'.format(values[0],values[1]))
+
     print("DONE")
     exit()

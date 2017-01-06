@@ -28,7 +28,7 @@ volatile Uint16 c1_buf_2_output_count;
 
 // function declarations
 __interrupt void cpu_timer0_isr(void);
-void capture_data(void);
+void capture_data(Uint32 *time, Uint16 *interrupted);
 inline void sampleADCA(BYTE *loc1, BYTE *loc2);
 inline void sampleADCB(BYTE *loc1, BYTE *loc2);
 void setup_blinkys(void);
@@ -104,6 +104,8 @@ void main(void) {
 
 	// TODO need to setup serial port to start running test
     c1_test_running = TRUE;
+    Uint32 run_time = 0;
+    Uint16 interrupted = FALSE;
 
 	// loop forever
 	while(1){
@@ -112,7 +114,7 @@ void main(void) {
 		if(c1_test_running == TRUE){
 		    c1_buf_1_write_count = 0;
 		    c1_buf_2_write_count = 0;
-			capture_data();
+			capture_data(&run_time, &interrupted);
 		}
 
 	}
@@ -122,7 +124,6 @@ void main(void) {
 // timer 0 clock
 __interrupt void cpu_timer0_isr(void)
 {
-	CpuTimer0.InterruptCount16++;
 	CpuTimer0.InterruptCount++;
 
 
@@ -131,34 +132,37 @@ __interrupt void cpu_timer0_isr(void)
 }
 
 // capture data
-void capture_data(void)
+void capture_data(Uint32 *time, Uint16 *interrupted)
 {
     //data
     Uint16 i,j;
     Uint16 array_pt_1 = TRUE;
+    Uint32 start_time, stop_time;
     array_pointer = c1_results_buf_1;
 
     // read NUM_WRITES*NUM_SAMPLES of data
+    start_time = CpuTimer0.InterruptCount;
 	for(j = 0; j < NUM_WRITES; ++j){
 
 		// make sure that buffer has been output to data file before writing to
 		if(array_pt_1 == TRUE)
-			while(c1_buf_1_write_count != c1_buf_1_output_count){}
+			while(c1_buf_1_write_count != c1_buf_1_output_count){(*interrupted) = TRUE;}
 		else
-			while(c1_buf_2_write_count != c1_buf_2_output_count){}
+			while(c1_buf_2_write_count != c1_buf_2_output_count){(*interrupted) = TRUE;}
 
 		// populate specified buffer
 		for(i = 0; i < NUM_SAMPLES; ++i){
 			// TODO hopefully can make this 0
-			DELAY_US(8);
+			DELAY_US(6);
 
-			array_pointer[resultsIndex] = (BYTE)(CpuTimer0.InterruptCount16 >> 8);
-			array_pointer[resultsIndex+1] = (BYTE)CpuTimer0.InterruptCount16;
+			//array_pointer[resultsIndex] = (BYTE)(CpuTimer0.InterruptCount16 >> 8);
+			//array_pointer[resultsIndex+1] = (BYTE)CpuTimer0.InterruptCount16;
 			//array_pointer[resultsIndex+1] = sampleADCA();
 			//array_pointer[resultsIndex+2] = sampleADCB();
-			sampleADCA(&array_pointer[resultsIndex+2], &array_pointer[resultsIndex+3]);
-			sampleADCB(&array_pointer[resultsIndex+4], &array_pointer[resultsIndex+5]);
-			resultsIndex = resultsIndex + 6;
+			sampleADCA(&array_pointer[resultsIndex], &array_pointer[resultsIndex+1]);
+			sampleADCB(&array_pointer[resultsIndex+2], &array_pointer[resultsIndex+3]);
+			//resultsIndex = resultsIndex + 6;
+			resultsIndex = resultsIndex + 4;
 		}
 
 		// reset index and flip to other buffer
@@ -178,7 +182,8 @@ void capture_data(void)
 		//if(j==100)
 			//break;
 	}
-
+    stop_time = CpuTimer0.InterruptCount;
+    (*time) = stop_time - start_time;
 	// reached maximum length
 	c1_test_running = FALSE;
 
@@ -242,7 +247,7 @@ void setup_timer(void)
     PieVectTable.TIMER0_INT = &cpu_timer0_isr;
     EDIS;
     InitCpuTimers();   // For this example, only initialize the Cpu Timers
-    ConfigCpuTimer(&CpuTimer0, 200, 1);
+    ConfigCpuTimer(&CpuTimer0, 200, 1000);
     CpuTimer0Regs.TCR.all = 0x4000;
     IER |= M_INT1;
     PieCtrlRegs.PIEIER1.bit.INTx7 = 1;

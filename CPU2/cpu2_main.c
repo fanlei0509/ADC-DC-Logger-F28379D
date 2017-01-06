@@ -26,7 +26,6 @@ volatile Uint16 c2_buf_2_output_count;
 
 // functions
 void write_data(void);
-void transform_data(void);
 
 // variables
 FATFS FatFs;		/* FatFs work area needed for each volume */
@@ -116,19 +115,19 @@ void main(void) {
 
 void write_data(void)
 {
-	FRESULT fresult;
     // setup data file
-    fresult = f_mount(&FatFs, "", 0);		/* Give a work area to the default drive */
+	f_mount(&FatFs, "", 0);		/* Give a work area to the default drive */
     //if(f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
     	//twiddle_blinkys();
-    fresult = f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS);
-    fresult = f_expand(&Fil, MAX_FILE_SIZE, 1);
+	f_open(&Fil, "data.bin", FA_WRITE | FA_CREATE_ALWAYS);
+	f_expand(&Fil, MAX_FILE_SIZE, 1);
 
-    BYTE drv = Fil.obj.fs->drv;
-    DWORD sect = Fil.obj.fs->database + Fil.obj.fs->csize * (Fil.obj.sclust - 2);
+    //BYTE drv = Fil.obj.fs->drv;
+    //DWORD sect = Fil.obj.fs->database + Fil.obj.fs->csize * (Fil.obj.sclust - 2);
 
     Uint16 data_pt_1 = TRUE;
 	data_pointer = c2_results_buf_1;
+	Uint16 dummy;
 
 	// wait until data is ready to be saved to file
 	while(c2_buf_1_write_count == 0){}
@@ -149,8 +148,9 @@ void write_data(void)
 			while(c2_buf_2_write_count == c2_buf_2_output_count){}
 
 		// write the data
-	    disk_write(drv, data_pointer, sect, NUM_SECTIONS);
-	    sect += NUM_SECTIONS;
+	    //disk_write(drv, data_pointer, sect, NUM_SECTIONS);
+	    //sect += NUM_SECTIONS;
+	    f_write(&Fil, data_pointer, BUFF_SIZE, &dummy);
 
 		// flip to other buffer
 		if(data_pt_1 == TRUE){
@@ -168,18 +168,5 @@ void write_data(void)
 
 	f_close(&Fil);
 
-	transform_data();
-
 	return;
-}
-
-void transform_data(void)
-{
-	FRESULT fresult;
-	fresult = f_open(&Fil, "data.txt", FA_READ);
-	Uint16 time_data[2];
-	Uint16 dummy;
-
-	fresult = f_read(&Fil, time_data, 4, &dummy);
-	f_close(&Fil);
 }
