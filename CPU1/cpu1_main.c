@@ -153,7 +153,7 @@ void capture_data(Uint32 *time, Uint16 *interrupted)
 		// populate specified buffer
 		for(i = 0; i < NUM_SAMPLES; ++i){
 			// TODO hopefully can make this 0
-			DELAY_US(6);
+			DELAY_US(1);//DELAY_US(1);
 
 			//array_pointer[resultsIndex] = (BYTE)(CpuTimer0.InterruptCount16 >> 8);
 			//array_pointer[resultsIndex+1] = (BYTE)CpuTimer0.InterruptCount16;
@@ -201,8 +201,8 @@ void sampleADCA(BYTE *loc1, BYTE *loc2)
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;        //Clear ADCINT1
 
     //Get ADC sample result from SOC0
-    (*loc1) = (BYTE)(AdcaResultRegs.ADCRESULT1 >> 8);
-    (*loc2) = (BYTE)AdcaResultRegs.ADCRESULT1;
+    (*loc1) = (BYTE)(AdcaResultRegs.ADCRESULT0 >> 8);
+    (*loc2) = (BYTE)AdcaResultRegs.ADCRESULT0;
 
     return;
 
@@ -219,8 +219,8 @@ void sampleADCB(BYTE *loc1, BYTE *loc2)
     AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;        //Clear ADCINT1
 
     //Get ADC sample result from SOC0
-    (*loc1) = (BYTE)(AdcbResultRegs.ADCRESULT1 >> 8);
-    (*loc2) = (BYTE)AdcbResultRegs.ADCRESULT1;
+    (*loc1) = (BYTE)(AdcbResultRegs.ADCRESULT0 >> 8);
+    (*loc2) = (BYTE)AdcbResultRegs.ADCRESULT0;
 
     return;
 
@@ -247,7 +247,7 @@ void setup_timer(void)
     PieVectTable.TIMER0_INT = &cpu_timer0_isr;
     EDIS;
     InitCpuTimers();   // For this example, only initialize the Cpu Timers
-    ConfigCpuTimer(&CpuTimer0, 200, 1000);
+    ConfigCpuTimer(&CpuTimer0, 200, 1);
     CpuTimer0Regs.TCR.all = 0x4000;
     IER |= M_INT1;
     PieCtrlRegs.PIEIER1.bit.INTx7 = 1;
@@ -262,8 +262,11 @@ void setup_ADCs(void)
 	//write configurations ADCA
 	AdcaRegs.ADCCTL2.bit.PRESCALE = 6; //set ADCCLK divider to /4
 	AdcbRegs.ADCCTL2.bit.PRESCALE = 6; //set ADCCLK divider to /4
-    AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
-    AdcSetMode(ADC_ADCB, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
+    //AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
+    //AdcSetMode(ADC_ADCB, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
+    AdcSetMode(ADC_ADCA, ADC_RESOLUTION_16BIT, ADC_SIGNALMODE_DIFFERENTIAL);
+    AdcSetMode(ADC_ADCB, ADC_RESOLUTION_16BIT, ADC_SIGNALMODE_DIFFERENTIAL);
+
 
 	//Set pulse positions to late
 	AdcaRegs.ADCCTL1.bit.INTPULSEPOS = 1;
@@ -277,6 +280,7 @@ void setup_ADCs(void)
 	DELAY_US(1000);
 
 	//ADCA
+#if 0
 	EALLOW;
 	AdcaRegs.ADCSOC0CTL.bit.CHSEL = 14;  //SOC0 will convert pin ADCIN14
 	AdcaRegs.ADCSOC0CTL.bit.ACQPS = 25; //sample window is acqps + 1 SYSCLK cycles
@@ -293,6 +297,21 @@ void setup_ADCs(void)
 	AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = 1; //end of SOC1 will set INT1 flag
 	AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1;   //enable INT1 flag
 	AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
+	EDIS;
+#endif
+	EALLOW;
+	AdcaRegs.ADCSOC0CTL.bit.CHSEL = 0;  //SOC0 will convert pin ADCIN14
+	AdcaRegs.ADCSOC0CTL.bit.ACQPS = 63; //sample window is acqps + 1 SYSCLK cycles
+	AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 1; //end of SOC1 will set INT1 flag
+	AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;   //enable INT1 flag
+	AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
+
+	AdcbRegs.ADCSOC0CTL.bit.CHSEL = 2;  //SOC0 will convert pin ADCIN15
+	AdcbRegs.ADCSOC0CTL.bit.ACQPS = 63; //sample window is acqps + 1 SYSCLK cycles
+	AdcbRegs.ADCINTSEL1N2.bit.INT1SEL = 1; //end of SOC1 will set INT1 flag
+	AdcbRegs.ADCINTSEL1N2.bit.INT1E = 1;   //enable INT1 flag
+	AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
+	EDIS;
 
 	return;
 }

@@ -20,11 +20,11 @@ extern Uint16 RamfuncsRunStart;
 #define BLINKY_LED_2        34
 #define TIMER_GPIO          65
 
-#define NUM_WRITES          2 //10000 //10
+#define NUM_WRITES          7500 //10000 //10
 #define NUM_SAMPLES         5120
 #define BUFF_SIZE           20480   // NUM_SAMPLES*3*2
 #define NUM_SECTIONS        40      // BUFF_SIZE/512
-#define MAX_FILE_SIZE       204800000 //307200 // NUM_WRITES*BUFF_SIZE
+#define MAX_FILE_SIZE       153600000 //307200 // NUM_WRITES*BUFF_SIZE
 
 
 #define TRUE                1
